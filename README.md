@@ -28,7 +28,11 @@ pip install -r requirements.txt
    export OPENAI_API_KEY="sk-xxxxxxxx"
    ```
 
-   - 若使用兼容的代理服务，可同时设置 `OPENAI_BASE_URL`（或 `OPENAI_API_BASE`）。
+   - 若使用兼容的代理服务，可同时设置 `OPENAI_API_BASE_URL`。项目同样兼容已有的 `OPENAI_BASE_URL` 与 `OPENAI_API_BASE` 变量，三者任意其一生效即可。
+   
+   ```bash
+   export OPENAI_API_BASE_URL="https://your-proxy.example.com/v1"
+   ```
 
 2. **选择模型**：CrewAI 会读取以下任一环境变量来决定调用的模型，按优先级从高到低：`MODEL` → `MODEL_NAME` → `OPENAI_MODEL_NAME`。
 
