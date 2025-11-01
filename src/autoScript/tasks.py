@@ -7,7 +7,16 @@ from textwrap import dedent
 from crewai import Agent, Task
 
 
-def create_blueprint_task(agent: Agent, *, style_template: str, novel_text: str, output_file: Path) -> Task:
+
+def create_blueprint_task(
+    agent: Agent,
+    *,
+    style_template: str,
+    novel_preview: str,
+    chunk_instructions: str,
+    output_file: Path,
+) -> Task:
+
     """Create the blueprint generation task."""
     return Task(
         agent=agent,
@@ -20,8 +29,13 @@ def create_blueprint_task(agent: Agent, *, style_template: str, novel_text: str,
             【剧本风格模版】
             {style_template}
 
-            【改编原著】
-            {novel_text}
+
+            【原著获取方式】
+            {chunk_instructions}
+
+            【原著预览片段】
+            {novel_preview}
+
             """
         ).strip(),
         expected_output=dedent(
@@ -33,7 +47,17 @@ def create_blueprint_task(agent: Agent, *, style_template: str, novel_text: str,
     )
 
 
-def create_scriptwriting_task(agent: Agent, *, blueprint_task: Task, style_template: str, novel_text: str, output_file: Path) -> Task:
+
+def create_scriptwriting_task(
+    agent: Agent,
+    *,
+    blueprint_task: Task,
+    style_template: str,
+    novel_preview: str,
+    chunk_instructions: str,
+    output_file: Path,
+) -> Task:
+
     """Create the screenplay generation task."""
     return Task(
         agent=agent,
@@ -46,8 +70,13 @@ def create_scriptwriting_task(agent: Agent, *, blueprint_task: Task, style_templ
             【剧本风格模版】
             {style_template}
 
-            【改编原著】
-            {novel_text}
+
+            【原著获取方式】
+            {chunk_instructions}
+
+            【原著预览片段】
+            {novel_preview}
+
             """
         ).strip(),
         expected_output=dedent(

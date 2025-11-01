@@ -22,6 +22,9 @@ from .tasks import (
     create_scriptwriting_task,
     create_wordcount_task,
 )
+
+from .tools.novel_chunk_tool import NovelChunkTool
+
 from .tools.word_count_tool import EpisodeWordCountTool
 
 
@@ -50,13 +53,25 @@ class CrewOutputPaths:
         )
 
 
-def build_crew(*, style_template: str, novel_text: str, output_dir: Path) -> Crew:
+
+def build_crew(
+    *,
+    style_template: str,
+    novel_text: str,
+    output_dir: Path,
+    chunk_size: int = 3500,
+    chunk_overlap: int = 200,
+) -> Crew:
     """Create the Crew instance wired with all agents and tasks."""
     output_paths = CrewOutputPaths.from_output_dir(output_dir)
     wordcount_tool = EpisodeWordCountTool()
+    novel_tool = NovelChunkTool(novel_text, chunk_size=chunk_size, overlap=chunk_overlap)
+    chunk_instructions = novel_tool.usage_guide()
+    novel_preview = novel_tool.preview
 
-    blueprint_agent = create_blueprint_agent()
-    scriptwriter_agent = create_scriptwriter_agent()
+    blueprint_agent = create_blueprint_agent(novel_tool)
+    scriptwriter_agent = create_scriptwriter_agent(novel_tool)
+
     qa_agent = create_wordcount_agent(wordcount_tool)
     formatter_agent = create_formatter_agent()
     compiler_agent = create_compiler_agent()
@@ -65,14 +80,20 @@ def build_crew(*, style_template: str, novel_text: str, output_dir: Path) -> Cre
     blueprint_task = create_blueprint_task(
         blueprint_agent,
         style_template=style_template,
-        novel_text=novel_text,
+
+        novel_preview=novel_preview,
+        chunk_instructions=chunk_instructions,
+
         output_file=output_paths.blueprint,
     )
     screenplay_task = create_scriptwriting_task(
         scriptwriter_agent,
         blueprint_task=blueprint_task,
         style_template=style_template,
-        novel_text=novel_text,
+
+        novel_preview=novel_preview,
+        chunk_instructions=chunk_instructions,
+
         output_file=output_paths.screenplay,
     )
     wordcount_task = create_wordcount_task(
