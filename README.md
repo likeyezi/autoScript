@@ -17,6 +17,31 @@
 pip install -r requirements.txt
 ```
 
+
+## 环境配置
+
+在运行流水线前，请先完成大模型与密钥配置：
+
+1. **配置 API Key**：流水线默认使用 OpenAI 兼容接口。请在终端中导出密钥，或在项目根目录创建 `.env` 文件。
+
+   ```bash
+   export OPENAI_API_KEY="sk-xxxxxxxx"
+   ```
+
+   - 若使用兼容的代理服务，可同时设置 `OPENAI_BASE_URL`（或 `OPENAI_API_BASE`）。
+
+2. **选择模型**：CrewAI 会读取以下任一环境变量来决定调用的模型，按优先级从高到低：`MODEL` → `MODEL_NAME` → `OPENAI_MODEL_NAME`。
+
+   ```bash
+   export OPENAI_MODEL_NAME="gpt-4o-mini"
+   ```
+
+   - 也可以使用 `MODEL=provider/model-name` 的格式指定其他厂商（例如 `MODEL="openai/gpt-4.1"` 或 `MODEL="anthropic/claude-3.5-sonnet"`），只要对应的 API Key 已按 CrewAI 官方要求配置。
+   - 更多供应商（如 Azure、Anthropic 等）的环境变量说明可参考 CrewAI 文档，配置方式与上面类似。
+
+完成以上步骤后即可运行脚本。
+
+
 ## 使用说明
 
 ```bash
