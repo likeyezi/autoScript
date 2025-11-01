@@ -7,6 +7,7 @@ from textwrap import dedent
 from crewai import Agent, Task
 
 
+
 def create_blueprint_task(
     agent: Agent,
     *,
@@ -15,6 +16,7 @@ def create_blueprint_task(
     chunk_instructions: str,
     output_file: Path,
 ) -> Task:
+
     """Create the blueprint generation task."""
     return Task(
         agent=agent,
@@ -27,11 +29,13 @@ def create_blueprint_task(
             【剧本风格模版】
             {style_template}
 
+
             【原著获取方式】
             {chunk_instructions}
 
             【原著预览片段】
             {novel_preview}
+
             """
         ).strip(),
         expected_output=dedent(
@@ -43,6 +47,7 @@ def create_blueprint_task(
     )
 
 
+
 def create_scriptwriting_task(
     agent: Agent,
     *,
@@ -52,6 +57,7 @@ def create_scriptwriting_task(
     chunk_instructions: str,
     output_file: Path,
 ) -> Task:
+
     """Create the screenplay generation task."""
     return Task(
         agent=agent,
@@ -64,11 +70,13 @@ def create_scriptwriting_task(
             【剧本风格模版】
             {style_template}
 
+
             【原著获取方式】
             {chunk_instructions}
 
             【原著预览片段】
             {novel_preview}
+
             """
         ).strip(),
         expected_output=dedent(

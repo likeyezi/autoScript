@@ -22,7 +22,9 @@ from .tasks import (
     create_scriptwriting_task,
     create_wordcount_task,
 )
+
 from .tools.novel_chunk_tool import NovelChunkTool
+
 from .tools.word_count_tool import EpisodeWordCountTool
 
 
@@ -51,6 +53,7 @@ class CrewOutputPaths:
         )
 
 
+
 def build_crew(
     *,
     style_template: str,
@@ -68,6 +71,7 @@ def build_crew(
 
     blueprint_agent = create_blueprint_agent(novel_tool)
     scriptwriter_agent = create_scriptwriter_agent(novel_tool)
+
     qa_agent = create_wordcount_agent(wordcount_tool)
     formatter_agent = create_formatter_agent()
     compiler_agent = create_compiler_agent()
@@ -76,16 +80,20 @@ def build_crew(
     blueprint_task = create_blueprint_task(
         blueprint_agent,
         style_template=style_template,
+
         novel_preview=novel_preview,
         chunk_instructions=chunk_instructions,
+
         output_file=output_paths.blueprint,
     )
     screenplay_task = create_scriptwriting_task(
         scriptwriter_agent,
         blueprint_task=blueprint_task,
         style_template=style_template,
+
         novel_preview=novel_preview,
         chunk_instructions=chunk_instructions,
+
         output_file=output_paths.screenplay,
     )
     wordcount_task = create_wordcount_task(

@@ -5,11 +5,13 @@ from textwrap import dedent
 
 from crewai import Agent
 
+
 from .tools.novel_chunk_tool import NovelChunkTool
 from .tools.word_count_tool import EpisodeWordCountTool
 
 
 def create_blueprint_agent(novel_tool: NovelChunkTool) -> Agent:
+
     """Agent responsible for extracting the macro adaptation blueprint."""
     return Agent(
         role="改编蓝图构筑师",
@@ -21,12 +23,16 @@ def create_blueprint_agent(novel_tool: NovelChunkTool) -> Agent:
             高压的制作周期中输出可执行的分幕规划。"""
         ).strip(),
         allow_delegation=False,
+
         tools=[novel_tool],
+
         verbose=True,
     )
 
 
+
 def create_scriptwriter_agent(novel_tool: NovelChunkTool) -> Agent:
+
     """Agent responsible for drafting each screenplay episode."""
     return Agent(
         role="百集短剧主笔",
@@ -38,7 +44,9 @@ def create_scriptwriter_agent(novel_tool: NovelChunkTool) -> Agent:
             灵活改编情节。你非常在意节奏与字数纪律。"""
         ).strip(),
         allow_delegation=False,
+
         tools=[novel_tool],
+
         verbose=True,
     )
 

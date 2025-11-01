@@ -10,13 +10,16 @@
 - **剧本排版官**：输出符合 V6.2 剧本格式铁律的最终排版。
 - **总编缉**：合并蓝图与剧本，形成统一文件。
 - **专业故事分析师**：生成故事梗概、人物小传、关键场景与前情提要，并合并至剧本开头。
+
 - **NovelChunkTool**：将超长原著切分为可按需检索的片段，避免触发 413 输入过长错误，并支持关键词或区段查阅。
+
 
 ## 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
+
 
 ## 环境配置
 
@@ -28,11 +31,15 @@ pip install -r requirements.txt
    export OPENAI_API_KEY="sk-xxxxxxxx"
    ```
 
+
    - 若使用兼容的代理服务，可同时设置 `OPENAI_API_BASE_URL`。项目同样兼容已有的 `OPENAI_BASE_URL` 与 `OPENAI_API_BASE` 变量，三者任意其一生效即可。
    
    ```bash
    export OPENAI_API_BASE_URL="https://your-proxy.example.com/v1"
    ```
+
+   - 若使用兼容的代理服务，可同时设置 `OPENAI_BASE_URL`（或 `OPENAI_API_BASE`）。
+
 
 2. **选择模型**：CrewAI 会读取以下任一环境变量来决定调用的模型，按优先级从高到低：`MODEL` → `MODEL_NAME` → `OPENAI_MODEL_NAME`。
 
@@ -45,6 +52,7 @@ pip install -r requirements.txt
 
 完成以上步骤后即可运行脚本。
 
+
 ### 大文本处理说明
 
 当原著文本超过单次上下文限制时，流水线会自动启用 `NovelChunkTool`：
@@ -53,13 +61,17 @@ pip install -r requirements.txt
 - 剧本任务描述中仅保留首段预览以及工具使用说明，避免一次性注入数百万 tokens 触发 413 错误。
 - 可通过 CLI 参数 `--chunk-size` 与 `--chunk-overlap` 调整分段粒度，以适配不同模型的上下文窗口。
 
+
 ## 使用说明
 
 ```bash
+
 python -m autoScript <风格模版路径> <原著小说路径> \
     --output-dir ./outputs \
     --chunk-size 3500 \
     --chunk-overlap 200
+
+
 ```
 
 脚本会在输出目录内生成以下文件：

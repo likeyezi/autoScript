@@ -19,6 +19,7 @@ def parse_args() -> argparse.Namespace:
         default=Path("outputs"),
         help="Directory for all intermediate与最终输出文件",
     )
+
     parser.add_argument(
         "--chunk-size",
         type=int,
@@ -31,6 +32,7 @@ def parse_args() -> argparse.Namespace:
         default=200,
         help="相邻片段的重叠字符数，默认 200",
     )
+
     return parser.parse_args()
 
 
@@ -68,6 +70,7 @@ def main() -> Dict[str, Any]:
     novel_text = load_text(args.novel_text)
     ensure_directory(args.output_dir)
 
+
     if args.chunk_size <= 0:
         raise ValueError("--chunk-size 必须为正整数")
     if args.chunk_overlap < 0:
@@ -79,8 +82,10 @@ def main() -> Dict[str, Any]:
         style_template=style_template,
         novel_text=novel_text,
         output_dir=args.output_dir,
+
         chunk_size=args.chunk_size,
         chunk_overlap=args.chunk_overlap,
+
     )
     results = crew.kickoff()
 
