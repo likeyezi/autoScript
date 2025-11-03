@@ -2,16 +2,13 @@
 
 自动化部署的 CrewAI 百集短剧改编流水线。该项目提供一个可执行的脚本，将原著小说与风格模版输入后，由多智能体协作完成蓝图设计、剧本撰写、字数校验、格式整理、合并与分析总结。
 
-## 功能特性
+## 系统亮点
 
-- **改编蓝图构筑师**：抽取核心故事线，拆分 5-8 幕的宏观结构。
-- **百集短剧主笔**：依据风格模版生成 120 集剧本，每集 1000-1200 字，并保证强钩子。
-- **字数巡逻官**：调用自定义 `EpisodeWordCountTool` 检查每集字数是否达标，提示返工。
-- **剧本排版官**：输出符合 V6.2 剧本格式铁律的最终排版。
-- **总编缉**：合并蓝图与剧本，形成统一文件。
-- **专业故事分析师**：生成故事梗概、人物小传、关键场景与前情提要，并合并至剧本开头。
-
-- **NovelChunkTool**：将超长原著切分为可按需检索的片段，避免触发 413 输入过长错误，并支持关键词或区段查阅。
+- **LangGraph 状态机**：通过 `StateGraph` 将 Human Input、Planner、Retrieval、Writer、Validator、Reviewer、Deliver 等节点连接成可回溯的状态机，天然支持条件路由与 retry 统计。
+- **双重 RAG**：`DualRAGIndex` 同时维护内容与风格两个向量空间。Writer 节点每次写作前都会并行检索原著场景与风格样本，实现“情节+风格”双重对齐。
+- **叙事感知分块**：`SceneSplitter` 依据时间/地点/角色线索自动划分场景，避免粗暴的固定字符切片带来的剧情断裂。
+- **确定性 Validator**：字数、标点、格式、动作情绪、审查底线全部使用 Python 代码校验，LLM 只负责创意输出。
+- **辅导式重写循环**：Validator 失败时自动进入 Reviewer 节点，将客观错误翻译成可执行的改写建议，最多三次自动返工后再升级人工。
 
 
 ## 安装依赖
@@ -20,69 +17,48 @@
 pip install -r requirements.txt
 ```
 
+> 说明：`transformers` 仅在需要动作情绪检测使用大模型时才会自动加载，未安装时系统会回退到关键字规则。
 
-## 环境配置
 
-在运行流水线前，请先完成大模型与密钥配置：
+## 输入准备
 
-1. **配置 API Key**：流水线默认使用 OpenAI 兼容接口。请在终端中导出密钥，或在项目根目录创建 `.env` 文件。
+运行脚本前需要准备三类输入文件：
 
-   ```bash
-   export OPENAI_API_KEY="sk-xxxxxxxx"
+1. **宏观蓝图**（JSON）：包含剧名、分集概要、RAG 检索关键词等结构化信息，示例：
+
+   ```json
+   {
+     "title": "炼气练成了执法官",
+     "outline": "第一幕讲述主角获得金手指……",
+     "episodes": [
+       {
+         "episode_number": 1,
+         "title": "系统降临",
+         "summary": "主角在出租屋觉醒系统，遭遇房东催租",
+         "rag_query": "觉醒系统 房东 催租",
+         "style_query": "高压对峙 场景"
+       }
+     ]
+   }
    ```
 
-
-   - 若使用兼容的代理服务，可同时设置 `OPENAI_API_BASE_URL`。项目同样兼容已有的 `OPENAI_BASE_URL` 与 `OPENAI_API_BASE` 变量，三者任意其一生效即可。
-   
-   ```bash
-   export OPENAI_API_BASE_URL="https://your-proxy.example.com/v1"
-   ```
-
-   - 若使用兼容的代理服务，可同时设置 `OPENAI_BASE_URL`（或 `OPENAI_API_BASE`）。
+2. **风格语料**（文本）：例如《神仙vx群》成片剧本，可直接将 `.docx` 转换为纯文本。
+3. **原著小说**（文本）：长篇原著完整内容。
 
 
-2. **选择模型**：CrewAI 会读取以下任一环境变量来决定调用的模型，按优先级从高到低：`MODEL` → `MODEL_NAME` → `OPENAI_MODEL_NAME`。
-
-   ```bash
-   export OPENAI_MODEL_NAME="gpt-4o-mini"
-   ```
-
-   - 也可以使用 `MODEL=provider/model-name` 的格式指定其他厂商（例如 `MODEL="openai/gpt-4.1"` 或 `MODEL="anthropic/claude-3.5-sonnet"`），只要对应的 API Key 已按 CrewAI 官方要求配置。
-   - 更多供应商（如 Azure、Anthropic 等）的环境变量说明可参考 CrewAI 文档，配置方式与上面类似。
-
-完成以上步骤后即可运行脚本。
-
-
-### 大文本处理说明
-
-当原著文本超过单次上下文限制时，流水线会自动启用 `NovelChunkTool`：
-
-- 原著会按字符切分为多段（默认每段 3500 字，重叠 200 字），每个智能体可通过 `chunk:<编号>`、`range:<起始>-<结束>` 或 `search:<关键词>` 指令按需读取。
-- 剧本任务描述中仅保留首段预览以及工具使用说明，避免一次性注入数百万 tokens 触发 413 错误。
-- 可通过 CLI 参数 `--chunk-size` 与 `--chunk-overlap` 调整分段粒度，以适配不同模型的上下文窗口。
-
-
-## 使用说明
+## 命令行用法
 
 ```bash
-
-python -m autoScript <风格模版路径> <原著小说路径> \
+python -m autoScript blueprint.json style_corpus.txt novel.txt \
     --output-dir ./outputs \
-    --chunk-size 3500 \
-    --chunk-overlap 200
-
-
+    --max-retries 3 \
+    --min-scene-chars 300 \
+    --max-scene-chars 3200
 ```
 
-脚本会在输出目录内生成以下文件：
+执行后，输出目录将包含：
 
-1. `01_blueprint.md`：改编蓝图。
-2. `02_screenplay_raw.md`：主笔初稿。
-3. `03_wordcount_report.md`：字数巡检结果。
-4. `04_screenplay_formatted.md`：格式化后的剧本。
-5. `05_script_compiled.md`：合并后的蓝图 + 剧本。
-6. `06_script_analysis.md`：结构化分析报告。
-7. `07_final_script_with_analysis.md`：将分析附加到剧本开头的最终交付文件。
-8. `pipeline_summary.json`：执行摘要与文件索引。
+- `episode_001.md` 等：Validator 通过的剧集剧本。
+- `workflow_summary.json`：记录产出文件、重写次数、是否需要人工介入等信息。
 
-运行 CrewAI 需要设置 `OPENAI_API_KEY` 或其他兼容的 LLM 提供商环境变量，具体请参考 CrewAI 官方文档。
+如需接入真实 LLM，可在 `PlannerAgent` / `WriterAgent` / `ReviewerAgent` 中替换为 API 调用，LangGraph 状态机与 Validator 逻辑无需改动。

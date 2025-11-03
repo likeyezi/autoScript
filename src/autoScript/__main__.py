@@ -1,38 +1,45 @@
-"""Command line interface for running the autoScript CrewAI pipeline."""
+"""Command line interface for running the LangGraph novel-to-script pipeline."""
 from __future__ import annotations
 
 import argparse
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
-from .crew import build_crew, build_output_paths
+from .rag import DualRAGIndex, SceneSplitter
+from .state import NovelAdaptationState
+from .workflow import NovelToScriptOrchestrator
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run the CrewAI adaptation pipeline.")
-    parser.add_argument("style_template", type=Path, help="Path to the剧本风格模版文本文件")
+    parser = argparse.ArgumentParser(description="Run the LangGraph dual-RAG adaptation pipeline.")
+    parser.add_argument("blueprint", type=Path, help="Path to the宏观蓝图 JSON 文件")
+    parser.add_argument("style_corpus", type=Path, help="Path to the风格样本文本文件")
     parser.add_argument("novel_text", type=Path, help="Path to the原著小说文本文件")
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=Path("outputs"),
-        help="Directory for all intermediate与最终输出文件",
-    )
-
-    parser.add_argument(
-        "--chunk-size",
-        type=int,
-        default=3500,
-        help="按字符切分原著时的单片段长度，默认 3500",
+        help="Directory for workflow outputs",
     )
     parser.add_argument(
-        "--chunk-overlap",
+        "--max-retries",
         type=int,
-        default=200,
-        help="相邻片段的重叠字符数，默认 200",
+        default=3,
+        help="Maximum automatic rewrite attempts before升级人工",
     )
-
+    parser.add_argument(
+        "--min-scene-chars",
+        type=int,
+        default=300,
+        help="Minimum characters per scene when splitting原著",
+    )
+    parser.add_argument(
+        "--max-scene-chars",
+        type=int,
+        default=3200,
+        help="Maximum characters per scene when splitting原著",
+    )
     return parser.parse_args()
 
 
@@ -44,12 +51,6 @@ def load_text(path: Path) -> str:
 
 def ensure_directory(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
-
-
-def merge_analysis_with_script(*, analysis_path: Path, script_path: Path, output_path: Path) -> None:
-    analysis = analysis_path.read_text(encoding="utf-8")
-    script = script_path.read_text(encoding="utf-8")
-    output_path.write_text(f"{analysis}\n\n{script}", encoding="utf-8")
 
 
 def make_serialisable(value: Any) -> Any:
@@ -64,52 +65,52 @@ def make_serialisable(value: Any) -> Any:
     return value
 
 
+def build_rag_index(*, novel_text: str, style_text: str, min_scene_chars: int, max_scene_chars: int) -> DualRAGIndex:
+    splitter = SceneSplitter(min_scene_chars=min_scene_chars, max_scene_chars=max_scene_chars)
+    content_docs = splitter.split(novel_text, source="novel")
+    style_docs = splitter.split(style_text, source="style")
+    index = DualRAGIndex()
+    index.index_content(content_docs)
+    index.index_style(style_docs)
+    return index
+
+
+def persist_scripts(scripts: List[str], output_dir: Path) -> List[str]:
+    files: List[str] = []
+    for index, script in enumerate(scripts, start=1):
+        path = output_dir / f"episode_{index:03d}.md"
+        path.write_text(script, encoding="utf-8")
+        files.append(str(path))
+    return files
+
+
 def main() -> Dict[str, Any]:
     args = parse_args()
-    style_template = load_text(args.style_template)
-    novel_text = load_text(args.novel_text)
     ensure_directory(args.output_dir)
 
+    blueprint = json.loads(load_text(args.blueprint))
+    style_text = load_text(args.style_corpus)
+    novel_text = load_text(args.novel_text)
 
-    if args.chunk_size <= 0:
-        raise ValueError("--chunk-size 必须为正整数")
-    if args.chunk_overlap < 0:
-        raise ValueError("--chunk-overlap 不能为负数")
-    if args.chunk_overlap >= args.chunk_size:
-        raise ValueError("--chunk-overlap 必须小于 --chunk-size")
-
-    crew = build_crew(
-        style_template=style_template,
+    rag_index = build_rag_index(
         novel_text=novel_text,
-        output_dir=args.output_dir,
-
-        chunk_size=args.chunk_size,
-        chunk_overlap=args.chunk_overlap,
-
-    )
-    results = crew.kickoff()
-
-    output_paths = build_output_paths(args.output_dir)
-    merge_analysis_with_script(
-        analysis_path=output_paths.analysis,
-        script_path=output_paths.compiled_script,
-        output_path=output_paths.final_with_analysis,
+        style_text=style_text,
+        min_scene_chars=args.min_scene_chars,
+        max_scene_chars=args.max_scene_chars,
     )
 
+    orchestrator = NovelToScriptOrchestrator(rag_index=rag_index, max_retries=args.max_retries)
+    final_state: NovelAdaptationState = orchestrator.run(blueprint=blueprint)
+
+    delivered_scripts = final_state.get("delivered_scripts", [])
+    script_files = persist_scripts(delivered_scripts, args.output_dir)
     summary = {
-        "results": make_serialisable(results),
-        "outputs": {
-            "blueprint": str(output_paths.blueprint),
-            "screenplay": str(output_paths.screenplay),
-            "qa_report": str(output_paths.qa_report),
-            "formatted_screenplay": str(output_paths.formatted_screenplay),
-            "compiled_script": str(output_paths.compiled_script),
-            "analysis": str(output_paths.analysis),
-            "final_with_analysis": str(output_paths.final_with_analysis),
-        },
+        "delivered_scripts": script_files,
+        "retry_count": final_state.get("retry_count", 0),
+        "requires_human_review": final_state.get("requires_human_review", False),
     }
-    summary_path = args.output_dir / "pipeline_summary.json"
-    summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    summary_path = args.output_dir / "workflow_summary.json"
+    summary_path.write_text(json.dumps(make_serialisable(summary), ensure_ascii=False, indent=2), encoding="utf-8")
     return summary
 
 
