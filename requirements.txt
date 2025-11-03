@@ -1,2 +1,6 @@
 crewai>=0.30.0
 crewai-tools>=0.2.0
+langgraph>=0.2.20
+numpy>=1.26
+scikit-learn>=1.4
+typing_extensions>=4.9

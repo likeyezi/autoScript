@@ -1,4 +1,23 @@
-"""autoScript package providing CrewAI screenplay adaptation pipeline."""
-from .crew import build_crew, build_output_paths, CrewOutputPaths
+"""autoScript package exposing the LangGraph novel-to-script workflow."""
 
-__all__ = ["build_crew", "build_output_paths", "CrewOutputPaths"]
+from .rag import DualRAGIndex, SceneSplitter
+from .state import EpisodeTask, NovelAdaptationState
+from .validator import validate_script
+from .workflow import (
+    NovelToScriptOrchestrator,
+    PlannerAgent,
+    ReviewerAgent,
+    WriterAgent,
+)
+
+__all__ = [
+    "DualRAGIndex",
+    "SceneSplitter",
+    "EpisodeTask",
+    "NovelAdaptationState",
+    "validate_script",
+    "NovelToScriptOrchestrator",
+    "PlannerAgent",
+    "ReviewerAgent",
+    "WriterAgent",
+]
